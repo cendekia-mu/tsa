@@ -1,0 +1,7 @@
+<html metal:use-macro="load: wiki2:templates/layout.pt">
+
+<div metal:fill-slot="content">
+  ${structure: form}
+</div>
+
+</html>

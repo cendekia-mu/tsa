@@ -1,0 +1,22 @@
+<html>
+
+<head>
+  <title>Home Page</title>
+</head>
+
+<body>
+  <img src="/images/logo.png" alt="Logo" />
+  <img src="${request.static_url('static_assets/img/logo.png')}" alt="Logo" />
+
+  <h1>Welcome to the Home Page</h1>
+  <p>This is a simple HTML template.</p>
+  <h2>Hallo. ${name}</h2>
+  <h3>Quote ${today}</h3>
+  <!-- <form method="post" action="">
+    <label for="date">Today's date:</label>
+    <input type="text" id="date" name="date" value="${date}" />
+    <input type="submit" value="Submit" />
+  </form> -->
+</body>
+
+</html>
