@@ -49,7 +49,8 @@ class WikiViews:
 
     @view_config(route_name='wiki_view', renderer='wiki_deform:templates/wiki_view.pt')
     def wiki_view(self):
-        return dict(pages=pages.values())
+        users = DBSession.query(Users).all()
+        return dict(users=users)
 
    
     @view_config(route_name='wikipage_add',
