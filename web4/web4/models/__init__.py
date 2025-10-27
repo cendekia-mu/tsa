@@ -188,3 +188,4 @@ class RootFactory(object):
 #                 self.__acl__.append((outcome, perm_user, perm_name,))
 
 
+from .auth import *  # noqa: E402,F401

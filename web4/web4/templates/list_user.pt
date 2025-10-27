@@ -1,0 +1,26 @@
+<div metal:use-macro="load: layout.pt">
+  <div metal:fill-slot="content">
+    <a tal:attributes="href string:${request.route_url('user-add')}">Add</a> |
+    <table padding="0" cellspacing="0" border="1" class="table table-striped table-bordered">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Registered Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr tal:repeat="user users">
+          <td><span tal:content="user.user_name">username</span></td>
+          <td><span tal:content="user.email">email</span></td>
+          <td><span tal:content="user.registered_date">registered date</span></td>
+          <td>
+            <a tal:attributes="href string:${request.route_url('user-edit', id=user.id)}">Edit</a> |
+            <a tal:attributes="href string:${request.route_url('user-delete', id=user.id)}">Delete</a>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

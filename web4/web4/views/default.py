@@ -31,11 +31,11 @@ try it again.
 """
 
 
-@view_config(route_name='edit_note', renderer='web4:templates/edit_note.pt',
-             permission='edit')
-def edit_note(request):
-    user = request.user
-    # user is now a Ziggurat/SQLAlchemy object that you can access
-    # Example for user Joe
-    print(user.user_name)
-    "Joe"
+# @view_config(route_name='edit_note', renderer='web4:templates/edit_note.pt',
+#              permission='edit')
+# def edit_note(request):
+#     user = request.user
+#     # user is now a Ziggurat/SQLAlchemy object that you can access
+#     # Example for user Joe
+#     print(user.user_name)
+#     "Joe"

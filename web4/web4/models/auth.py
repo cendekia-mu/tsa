@@ -1,7 +1,6 @@
 from pyramid.security import Allow, ALL_PERMISSIONS
 import sqlalchemy as sa
 import ziggurat_foundations.models
-from ziggurat_foundations.models.base import BaseModel
 from ziggurat_foundations.models.external_identity import ExternalIdentityMixin
 from ziggurat_foundations.models.group import GroupMixin
 from ziggurat_foundations.models.group_permission import GroupPermissionMixin
@@ -12,8 +11,10 @@ from ziggurat_foundations.models.user_group import UserGroupMixin
 from ziggurat_foundations.models.user_permission import UserPermissionMixin
 from ziggurat_foundations.models.user_resource_permission import UserResourcePermissionMixin
 from ziggurat_foundations import ziggurat_model_init
+from ziggurat_foundations.models.services.user import UserService
 from .meta import Base
 from . import DBSession
+
 # this is needed for scoped session approach like in pylons 1.0
 ziggurat_foundations.models.DBSession = DBSession
 # optional for folks who pass request.db to model methods
@@ -61,14 +62,27 @@ class UserPermission(UserPermissionMixin, Base):
 class UserResourcePermission(UserResourcePermissionMixin, Base):
     pass
 
+class DefaultModel():
 
-class User(UserMixin, Base):
+    db_session = DBSession
+
+    @classmethod
+    def query(cls):
+        return cls.db_session.query(cls)
+
+class User(UserMixin, Base, DefaultModel):
     # ... your own properties....
     permissions = sa.orm.relationship(
         "UserPermission", backref="user", lazy="dynamic", cascade="all, delete-orphan",
         passive_deletes=True, passive_updates=True,
     )
 
+    def set_password(self, password):
+        """ set password helper for user model """
+        if password:
+            UserService.set_password(self, password)
+
+    
 
 class ExternalIdentity(ExternalIdentityMixin, Base):
     pass
