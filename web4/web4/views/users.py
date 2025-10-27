@@ -87,9 +87,6 @@ class Views(object):
             User.user_name == value['user_name']
         ).first()
         if found:
-            log.info(
-                f"User with username '{value['user_name']}' already exists.")
-            log.info(                f"User ID '{user_id}' already exists.")
             if user_id and found.id != int(user_id):
                 exc["user_name"] = 'Username already exists.'
                 raise exc
