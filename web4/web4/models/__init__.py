@@ -2,6 +2,7 @@ from ziggurat_foundations.permissions import permission_to_pyramid_acls
 from pyramid.security import Allow, Authenticated, ALL_PERMISSIONS
 from pyramid.security import Everyone
 from pyramid.httpexceptions import HTTPForbidden, HTTPNotFound
+import sqlalchemy as sa
 from sqlalchemy import engine_from_config
 from sqlalchemy.orm import (scoped_session, Session)
 from sqlalchemy.orm import sessionmaker
@@ -14,6 +15,24 @@ from .meta import Base
 
 DBSession = sessionmaker(class_=Session)
 zope.sqlalchemy.register(DBSession)
+
+
+class DefaultModel():
+
+    db_session = DBSession
+    id = sa.Column(sa.Integer(), primary_key=True)
+
+    @classmethod
+    def query(cls):
+        return cls.db_session.query(cls)
+
+    @classmethod
+    def query_id(cls, id_):
+        return cls.query().filter(cls.id == id_)
+
+    @classmethod
+    def by_id(cls, id_):
+        return cls.query_id(id_).first()
 
 from .mymodel import MyModel  # flake8: noqa
 

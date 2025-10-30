@@ -19,6 +19,7 @@ class UserSchema(colander.MappingSchema):
     email = colander.SchemaNode(
         colander.String(),
         title="Email",
+        validator=colander.Email(),
         description="Enter your email address",
     )
     password = colander.SchemaNode(
@@ -33,9 +34,7 @@ class Views(object):
     def __init__(self, request):
         self.request = request
 
-    @view_config(route_name='user', renderer='web4:templates/list_user.pt',
-                 #  permission='view'
-                 )
+    @view_config(route_name='user', renderer='web4:templates/list_user.pt',)
     def list_users(self):
         # Logic to fetch all users from the database goes here
         users = self.request.dbsession.query(User).all()

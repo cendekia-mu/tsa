@@ -7,3 +7,9 @@ def includeme(config):
     config.add_route('user-add', '/user/add')
     config.add_route('user-edit', '/user/{id}/edit')
     config.add_route('user-delete', '/user/{id}/delete')
+
+    config.add_route('group-list', '/group/list')
+    config.add_route('group-create', '/group/create')
+    config.add_route('group-read', '/group/{id}/read')
+    config.add_route('group-update', '/group/{id}/update')
+    config.add_route('group-delete', '/group/{id}/delete')

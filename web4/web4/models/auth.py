@@ -13,7 +13,7 @@ from ziggurat_foundations.models.user_resource_permission import UserResourcePer
 from ziggurat_foundations import ziggurat_model_init
 from ziggurat_foundations.models.services.user import UserService
 from .meta import Base
-from . import DBSession
+from . import DBSession, DefaultModel
 
 # this is needed for scoped session approach like in pylons 1.0
 ziggurat_foundations.models.DBSession = DBSession
@@ -62,13 +62,6 @@ class UserPermission(UserPermissionMixin, Base):
 class UserResourcePermission(UserResourcePermissionMixin, Base):
     pass
 
-class DefaultModel():
-
-    db_session = DBSession
-
-    @classmethod
-    def query(cls):
-        return cls.db_session.query(cls)
 
 class User(UserMixin, Base, DefaultModel):
     # ... your own properties....
