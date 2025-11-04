@@ -19,6 +19,8 @@ def main(global_config, **settings):
                       root_factory='web4.models.RootFactory',
                       authentication_policy=authn_policy,
                       authorization_policy=authz_policy) 
+    config.add_static_view(
+        'deform_static', 'deform:static', cache_max_age=3600)
     config.include('pyramid_chameleon')
     config.include('.routes')
     config.include('.models')

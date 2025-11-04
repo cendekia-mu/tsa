@@ -22,12 +22,15 @@ ziggurat_foundations.models.DBSession = DBSession
 # Base is sqlalchemy's Base = declarative_base() from your project
 
 
-class Group(GroupMixin, Base):
+class Group(GroupMixin, Base, DefaultModel):
     pass
 
 
 class GroupPermission(GroupPermissionMixin, Base):
-    pass
+    db_session = DBSession
+    @classmethod
+    def query(cls):
+        return cls.db_session.query(cls)
 
 
 class UserGroup(UserGroupMixin, Base):

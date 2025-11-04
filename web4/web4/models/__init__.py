@@ -13,7 +13,7 @@ import zope.sqlalchemy
 # ``Base.metadata`` prior to any initialization routines.
 from .meta import Base
 
-DBSession = sessionmaker(class_=Session)
+DBSession = scoped_session(sessionmaker(class_=Session))
 zope.sqlalchemy.register(DBSession)
 
 

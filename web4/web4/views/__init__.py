@@ -1,11 +1,29 @@
-from pyramid.view import view_config
 from web4.models.auth import User
-import datetime
-class Views(object):
+from pyramid.httpexceptions import HTTPFound
+import deform
+import colander
+
+class CreateSchema(colander.MappingSchema):
+    pass
+
+class UpdateSchema(CreateSchema):
+    pass
+
+class ReadSchema(UpdateSchema):
+    def after_bind(self, node, kw):
+        for child in node.children:
+            child.widget.readonly = True
+            child.missing = colander.drop
+
+class BaseViews(object):
     def __init__(self, request):
         self.request = request
-        self.table = None
-
+        self.table = User # Default table, can be overridden
+        self.CreateSchema = CreateSchema # Default schema, can be overridden
+        self.UpdateSchema = UpdateSchema # Default schema, can be overridden
+        self.ReadSchema = ReadSchema # Default read schema, can be overridden
+        self.list_route_name = 'user-list' # Default list route name, can be overridden
+ 
     def view_list(self):
         # Logic to fetch all users from the database goes here
         rows = self.table.query().all()
@@ -14,19 +32,17 @@ class Views(object):
     def save(self, values, row=None):
         if not row:
             row = self.table()
-            row.registered_date = datetime.datetime.now()
 
-        row.user_name = values['user_name']
-        row.email = values['email']
+        for key, val in values.items():
+            if hasattr(row, key):
+                setattr(row, key, val)
+
         self.request.dbsession.add(row)
         self.request.dbsession.flush()
-        if values.get('password'):
-            row.set_password(values['password'])
         return row
 
-    def add_user(self):
-        schema = UserSchema(validator=self.form_validator)
-        form = deform.Form(schema, buttons=('save', 'cancel'))
+    def view_create(self):
+        form = self.get_form(self.CreateSchema, buttons=('save', 'cancel'))
 
         if self.request.POST:
             if 'save' in self.request.POST:
@@ -39,100 +55,94 @@ class Views(object):
                 except deform.ValidationFailure as e:
                     return {'form': e.render()}
 
-            return HTTPFound(location=self.request.route_url('user'))
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
 
         rendered_form = form.render()
         return {'form': rendered_form}
 
     def form_validator(self, form, value):
-        # Custom validation logic can be added here
-        exc = colander.Invalid(
-            form,
-            'Terjadi kesalahan pengisian data'
-        )
-
-        user_id = self.request.matchdict.get('id')
-        found = self.request.dbsession.query(User).filter(
-            User.user_name == value['user_name']
-        ).first()
-        if found:
-            if user_id and found.id != int(user_id):
-                exc["user_name"] = 'Username already exists.'
-                raise exc
-            elif not user_id:
-                exc["user_name"] = 'Username already exists.'
-                raise exc
-
-        found = self.request.dbsession.query(User).filter(
-            User.email == value['email']
-        ).first()
-        if found:
-
-            if user_id and found.id != int(user_id):
-                exc["email"] = 'Email already exists.'
-                raise exc
-            else:
-                exc["email"] = 'Email already exists.'
-                raise exc
+        pass
 
     def query_id(self):
-        user_id = self.request.matchdict.get('id')
-        return self.request.dbsession.query(User).filter(User.id == user_id)
+        id_ = self.request.matchdict.get('id')
+        return self.request.dbsession.query(self.table).filter(self.table.id == id_)
+    
+    def get_form(self, schema_class, buttons=("cancel", )):
+        schema = schema_class(validator=self.form_validator, request=self.request)
+        schema = schema.bind(request=self.request)
+        form = deform.Form(schema, buttons=buttons)
+        return form
 
-    def edit_user(self):
+    def view_read(self):
         # Logic to fetch user data from the database goes here
         query = self.query_id()
-        user = query.first()
-        if not user:
+        row = query.first()
+        if not row:
+            self.request.session.flash('Record not found!')
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
+
+        form = self.get_form(self.ReadSchema)
+        if self.request.POST:
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
+
+        # Pre-fill form with existing user data
+        appstruct = self.get_values(row)
+        rendered_form = form.render(appstruct)
+        return {'form': rendered_form}
+
+    def view_update(self):
+        # Logic to fetch user data from the database goes here
+        query = self.query_id()
+        row = query.first()
+        if not row:
             self.request.session.flash('User not found!')
             return HTTPFound(location=self.request.route_url('user'))
 
-        schema = UserSchema(validator=self.form_validator)
-        form = deform.Form(schema, buttons=('save', 'cancel'))
+        form = self.get_form(self.UpdateSchema, buttons=('save', 'cancel'))
         if self.request.POST:
             if 'save' in self.request.POST:
                 controls = self.request.POST.items()
                 try:
                     appstruct = form.validate(controls)
                     # Logic to update user in the database goes here
-                    user = self.save(appstruct, user)
-                    self.request.session.flash('User updated successfully!')
-                    return HTTPFound(location=self.request.route_url('user'))
+                    user = self.save(appstruct, row)
+                    self.request.session.flash('Record updated successfully!')
                 except deform.ValidationFailure as e:
                     return {'form': e.render()}
 
-            return HTTPFound(location=self.request.route_url('user'))
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
 
         # Pre-fill form with existing user data
-        appstruct = dict(user.__dict__)
-        # Remove SQLAlchemy internal state
-        appstruct.pop('_sa_instance_state', None)
+        appstruct = self.get_values(row)
         rendered_form = form.render(appstruct)
         return {'form': rendered_form}
-
-    def delete_user(self):
-        # Logic to fetch user data from the database goes here
-        query = self.query_id()
-        user = query.first()
-        if not user:
-            self.request.session.flash('User not found!')
-            return HTTPFound(location=self.request.route_url('user'))
-
-        schema = UserSchema()
-        form = deform.Form(schema, buttons=('delete', 'cancel'))
-        if self.request.POST:
-            if 'delete' in self.request.POST:
-                try:
-                    query.delete()
-                    self.request.session.flash('User deleted successfully!')
-                except deform.ValidationFailure as e:
-                    return {'form': e.render()}
-
-            return HTTPFound(location=self.request.route_url('user'))
-
-        # Pre-fill form with existing user data
-        appstruct = dict(user.__dict__)
+    
+    def get_values(self, row):
+        appstruct = dict(row.__dict__)
         # Remove SQLAlchemy internal state
         appstruct.pop('_sa_instance_state', None)
-        rendered_form = form.render(appstruct)
+        return appstruct
+    
+
+    def view_delete(self):
+        # Logic to fetch user data from the database goes here
+        query = self.query_id()
+        row = query.first()
+        if not row:
+            self.request.session.flash('Record not found!')
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
+        if self.request.POST:
+            if "delete" in self.request.POST:
+                try:
+                    query.delete()
+                    self.request.session.flash('Record deleted successfully!')
+                except Exception as e:
+                    self.request.session.flash('Error deleting user: {}'.format(e))
+
+            return HTTPFound(location=self.request.route_url(self.list_route_name))
+        
+        form = self.get_form(self.ReadSchema, buttons=('delete', 'cancel'))
+        app_struct = self.get_values(row)
+        form.set_appstruct(app_struct)
+        rendered_form = form.render()
         return {'form': rendered_form}

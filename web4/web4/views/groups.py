@@ -34,12 +34,15 @@
 
 """
 
-from deform import widget, Form, ValidationFailure
+import logging
 import colander
+import deform
 from pyramid.view import view_config
 from pyramid.httpexceptions import HTTPFound
 from ..models.auth import Group
+from web4.views import BaseViews
 
+log = logging.getLogger(__name__)
 class CreateSchema(colander.MappingSchema):
     group_name = colander.SchemaNode(
         colander.String(),
@@ -60,100 +63,56 @@ class UpdateSchema(CreateSchema):
         title="ID",
         description="Unique identifier for the group",
         missing=colander.drop,
-        widget=widget.HiddenWidget(),
+        widget=deform.widget.HiddenWidget(),
     )
 
-class Views():
+class ReadSchema(UpdateSchema):
+    def after_bind(self, node, kw):
+        for child in node.children:
+            child.widget.readonly = True
+            child.missing = colander.drop
+class Views(BaseViews):
     def __init__(self, request):
-        self.request = request
-        self.table = Group
+        super().__init__(request)
+        self.table = Group 
+        self.CreateSchema = CreateSchema  
+        self.UpdateSchema = UpdateSchema 
+        self.ReadSchema = ReadSchema 
+        self.list_route_name = 'group' 
 
-    @view_config(route_name='group-list', renderer='web4:templates/list_group.pt')
-    def view_list(self):
-        rows = self.request.dbsession.query(self.table).all()
-        return {'rows': rows}
-
-    @view_config(route_name='group-create', renderer='web4:templates/form.pt')
-    def view_create(self):
-        schema = CreateSchema()
-        form = Form(schema, buttons=('save','cancel'))
-        if self.request.POST:
-            if 'save' in self.request.POST:
-                controls = self.request.POST.items()
-                try:
-                    appstruct = form.validate(controls)
-                    self.save(appstruct)
-                except ValidationFailure as e:
-                    return {'form': e.render()}
-                
-            return HTTPFound(self.request.route_url('group-list'))
-            
-        return {'form': form.render()}
-    
-    def save(self, values, row=None):
-        if row is None:
-            row = self.table()
-        row.group_name = values['group_name']
-        row.description = values.get('description', '') # optional karena kemungkinan tidak diisi
-        self.request.dbsession.add(row)
-
-    def query_id(self):
+    def form_validator(self, form, value):
+        # Custom validation logic can be added here
+        exc = colander.Invalid(
+            form,
+            'Terjadi kesalahan pengisian data'
+        )
         id_ = self.request.matchdict.get('id')
-        return self.request.dbsession.query(self.table).filter_by(id=id_)
+        found = self.request.dbsession.query(self.table).filter(
+            self.table.group_name == value['group_name'],
+            self.table.id != id_ if id_ else True
+        ).first()
+        if found:
+            exc["group_name"] = 'Group name already exists.'
+            raise exc
+
+
+    # @view_config(route_name='group-create', renderer='web4:templates/form.pt')
+    # def view_create(self):
+    #     return super().view_create()
+
+    # @view_config(route_name='group-read', renderer='web4:templates/form.pt')
+    # def view_read(self):
+    #     return super().view_read()
     
-    @view_config(route_name='group-read', renderer='web4:templates/form.pt')
-    def view_read(self):
-        query = self.query_id()
-        if not query.first():
-            self.request.session.flash('Group not found!', 'error')
-            return HTTPFound(self.request.route_url('group-list'))
-
-        schema = UpdateSchema()
-        form = Form(schema, buttons=('cancel','delete'))
-        if self.request.POST:
-            if 'delete' in self.request.POST:
-                return HTTPFound(self.request.route_url('group-delete', id=self.request.matchdict.get('id')))
-            
-            return HTTPFound(self.request.route_url('group-list'))
-        
-        appstruct = query.first().__dict__
-        return {'form': form.render(appstruct=appstruct)}
-
-    @view_config(route_name='group-update', renderer='web4:templates/form.pt')
-    def view_update(self):
-        query = self.query_id()
-        row = query.first()
-        if not row:
-            self.request.session.flash('Group not found!', 'error')
-            return HTTPFound(self.request.route_url('group-list'))
-
-        schema = UpdateSchema()
-        form = Form(schema, buttons=('save', 'cancel'))
-        if self.request.POST:
-            if 'save' in self.request.POST:
-                controls = self.request.POST.items()
-                try:
-                    appstruct = form.validate(controls)
-                    self.save(appstruct, row)
-                except ValidationFailure as e:
-                    return {'form': e.render()}
-
-            return HTTPFound(self.request.route_url('group-list'))
-
-        appstruct = row.__dict__
-        return {'form': form.render(appstruct=appstruct)}
-
-    @view_config(route_name='group-delete', renderer='web4:templates/form.pt')
-    def view_delete(self):
-        query = self.query_id()
-        if not query.first():
-            self.request.session.flash('Group not found!', 'error')
-            return HTTPFound(self.request.route_url('group-list'))
-        
-        query.delete()
-        self.request.session.flash('Group deleted successfully!')
-        return HTTPFound(self.request.route_url('group-list'))
-
-    def form_validator(self):
-        pass
-
+    # @view_config(route_name='group-update', renderer='web4:templates/form.pt')
+    # def view_update(self):
+    #     return super().view_update()
+    
+    # @view_config(route_name='group-list', renderer='web4:templates/list_group.pt')
+    # def view_list(self):
+    #     return super().view_list()
+    
+    @view_config(route_name='group-delete')
+    def view_delete(self):      
+        return super().view_delete()
+    
